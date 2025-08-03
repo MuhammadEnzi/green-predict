@@ -55,7 +55,7 @@ const getAnalysis = async (req, res) => {
         input: { 
           prompt: promptForAI, 
           temperature: 0.7, 
-          max_new_tokens: 8192 
+          max_new_tokens: 4096 
         } 
       }
     );
