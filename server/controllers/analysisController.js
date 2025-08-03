@@ -16,7 +16,6 @@ const getAnalysis = async (req, res) => {
     const totalPrecipitation = dailyPrecipitation.reduce((a, b) => a + b, 0);
     const averagePrecipitation = (totalPrecipitation / dailyPrecipitation.length).toFixed(2);
 
-    // 👇 PROMPT YANG JAUH LEBIH SEDERHANA DAN FOKUS PADA TEKS 👇
     const promptForAI = `
       Anda adalah "GreenPredict", seorang ahli mitigasi bencana. Tugas Anda adalah memberikan analisis risiko iklim yang detail DAN meringkasnya menjadi poin-poin kunci berdasarkan data input. Jawab dalam Bahasa Indonesia.
 
@@ -45,12 +44,13 @@ const getAnalysis = async (req, res) => {
 
     console.log("Mengirim permintaan analisis teks ke AI...");
     const output = await replicate.run(
-      "ibm-granite/granite-3.3-8b-instruct",
+      // 👇 PERBAIKAN DI SINI: Menggunakan identifier model yang LENGKAP 👇
+      "ibm-granite/granite-3.3-8b-instruct:624457588a734565a5131f496d6e752932972986a5124116b8e138a08eda44f4",
       { 
         input: { 
           prompt: promptForAI, 
           temperature: 0.7, 
-          max_new_tokens: 2048 // Bisa diturunkan karena tugas lebih ringan
+          max_new_tokens: 2048
         } 
       }
     );
@@ -65,20 +65,18 @@ const getAnalysis = async (req, res) => {
     const jsonString = resultString.substring(startIndex, endIndex + 1);
     const textAnalysisResult = JSON.parse(jsonString);
 
-    // 👇 PERUBAHAN UTAMA: Backend membuat zona bahaya sendiri secara konsisten 👇
     const dangerZonePolygon = {
       type: "Polygon",
       coordinates: [
         Array.from({ length: 16 }).map((_, i) => {
           const angle = (i / 16) * 2 * Math.PI;
-          const radius = 0.005; // Radius sekitar 500m
+          const radius = 0.005;
           return [parseFloat(lon) + radius * Math.cos(angle), parseFloat(lat) + radius * Math.sin(angle)];
         })
       ]
     };
-    dangerZonePolygon.coordinates[0].push(dangerZonePolygon.coordinates[0][0]); // Menutup poligon
+    dangerZonePolygon.coordinates[0].push(dangerZonePolygon.coordinates[0][0]);
 
-    // Gabungkan hasil analisis teks dari AI dengan GeoJSON buatan backend
     const finalResult = {
       ...textAnalysisResult,
       dangerZoneGeoJSON: dangerZonePolygon
@@ -118,8 +116,9 @@ const getFollowUp = async (req, res) => {
   try {
     console.log("Mengirim permintaan follow-up ke AI...");
     const output = await replicate.run(
-      "ibm-granite/granite-3.3-8b-instruct",
-      { input: { prompt: promptForAI, temperature: 0.6, max_new_tokens: 2048 } }
+      // 👇 PERBAIKAN DI SINI: Menggunakan identifier model yang LENGKAP 👇
+      "ibm-granite/granite-3.3-8b-instruct:624457588a734565a5131f496d6e752932972986a5124116b8e138a08eda44f4",
+      { input: { prompt: promptForAI, temperature: 0.6, max_new_tokens: 500 } }
     );
     const resultText = output.join("");
     res.status(200).json({ answer: resultText });
