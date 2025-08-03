@@ -1,4 +1,10 @@
-🌿 GreenPredict: Asisten Mitigasi Iklim Berbasis AI
+
+
+#🌿 GreenPredict: Asisten Mitigasi Iklim Berbasis AI
+
+
+
+
 
 
 --------------------------------- Deskripsi ---------------------------
@@ -111,7 +117,7 @@ npm run dev
 
 Aplikasi akan otomatis terbuka di browser Anda, biasanya di http://localhost:5173.
 
-Variabel Lingkungan (.env)
+Variabel Lingkungan (.env) - > ini komponen penting untuk integrasi api
 Pastikan Anda membuat file .env di dalam folder server dengan format berikut:
 
 PORT=5001
