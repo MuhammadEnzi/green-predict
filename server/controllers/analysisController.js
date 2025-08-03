@@ -16,45 +16,41 @@ const getAnalysis = async (req, res) => {
     const totalPrecipitation = dailyPrecipitation.reduce((a, b) => a + b, 0);
     const averagePrecipitation = (totalPrecipitation / dailyPrecipitation.length).toFixed(2);
 
-    // 👇 PERUBAHAN UTAMA: Struktur prompt baru yang lebih logis 👇
+    // 👇 PROMPT YANG JAUH LEBIH SEDERHANA DAN FOKUS PADA TEKS 👇
     const promptForAI = `
-      ### PERAN & ATURAN SISTEM ###
-      Anda adalah "GreenPredict", seorang ahli mitigasi bencana. Tugas utama Anda adalah mengisi template JSON berikut berdasarkan data yang diberikan. Jawab dalam Bahasa Indonesia.
-      Aturan terpenting: Hasilkan HANYA objek JSON yang valid. Jangan sertakan teks pembuka, penutup, atau penjelasan apapun di luar objek JSON.
+      Anda adalah "GreenPredict", seorang ahli mitigasi bencana. Tugas Anda adalah memberikan analisis risiko iklim yang detail DAN meringkasnya menjadi poin-poin kunci berdasarkan data input. Jawab dalam Bahasa Indonesia.
 
-      ### TEMPLATE FORMAT OUTPUT JSON ###
+      ### DATA INPUT ###
+      **Lokasi:** ${locationName}
+      **Jenis Risiko untuk Dianalisis:** "${riskType}"
+      **Data Curah Hujan (90 hari terakhir):** Rata-rata ${averagePrecipitation} mm/hari.
+
+      ### TUGAS ANDA ###
+      1.  **Tentukan Tingkat Risiko**: Berdasarkan data curah hujan, berikan satu kata kesimpulan: "Rendah", "Sedang", atau "Tinggi". GUNAKAN ATURAN LOGIKA INI: Untuk Banjir, > 5mm/hari = Tinggi, 2-5mm/hari = Sedang, < 2mm/hari = Rendah. Untuk Kekeringan, < 1mm/hari = Tinggi, 1-3mm/hari = Sedang, > 3mm/hari = Rendah.
+      2.  **Identifikasi Fakta Kunci**: Pilih satu data paling penting yang mendukung kesimpulan Anda.
+      3.  **Pilih Rekomendasi Utama**: Pilih satu aksi mitigasi yang paling berdampak.
+      4.  Buat analisis risiko, strategi komunitas, dan strategi UMKM yang detail.
+
+      ### FORMAT OUTPUT (IKUTI DENGAN SANGAT TEPAT) ###
+      Hasilkan respons HANYA dalam format JSON yang valid. JANGAN sertakan GeoJSON atau teks lain di luar objek JSON.
       {
         "riskLevel": "...", 
         "keyFact": "...",
         "keyRecommendation": "...",
         "riskAnalysis": "...",
         "communityMitigation": ["...", "..."],
-        "msmeStrategy": ["...", "..."],
-        "dangerZoneGeoJSON": {
-          "type": "Polygon",
-          "coordinates": [[[...]]]
-        }
+        "msmeStrategy": ["...", "..."]
       }
-
-      ### DATA INPUT PENGGUNA ###
-      **Lokasi:** ${locationName}
-      **Jenis Risiko untuk Dianalisis:** "${riskType}"
-      **Data Curah Hujan (90 hari terakhir):** Rata-rata ${averagePrecipitation} mm/hari.
-
-      ### TUGAS ANDA ###
-      Sekarang, isi template JSON di atas berdasarkan DATA INPUT PENGGUNA.
-      Untuk "riskLevel", gunakan aturan logika ini: Untuk Banjir, > 5mm/hari = Tinggi, 2-5mm/hari = Sedang, < 2mm/hari = Rendah. Untuk Kekeringan, < 1mm/hari = Tinggi, 1-3mm/hari = Sedang, > 3mm/hari = Rendah.
-      Untuk "dangerZoneGeoJSON", buat poligon lingkaran sederhana (8-16 titik) dengan radius sekitar 500 meter (0.005 derajat) di sekitar titik koordinat input.
     `;
 
-    console.log("Mengirim permintaan analisis dengan prompt berbasis peran...");
+    console.log("Mengirim permintaan analisis teks ke AI...");
     const output = await replicate.run(
       "ibm-granite/granite-3.3-8b-instruct",
       { 
         input: { 
           prompt: promptForAI, 
           temperature: 0.7, 
-          max_new_tokens: 4096
+          max_new_tokens: 2048 // Bisa diturunkan karena tugas lebih ringan
         } 
       }
     );
@@ -69,24 +65,26 @@ const getAnalysis = async (req, res) => {
     const jsonString = resultString.substring(startIndex, endIndex + 1);
     const textAnalysisResult = JSON.parse(jsonString);
 
-    // Fallback jika AI gagal membuat GeoJSON yang valid
-    if (!textAnalysisResult.dangerZoneGeoJSON || !textAnalysisResult.dangerZoneGeoJSON.coordinates) {
-        console.warn("AI gagal menghasilkan GeoJSON. Membuat poligon fallback.");
-        const dangerZonePolygon = {
-          type: "Polygon",
-          coordinates: [
-            Array.from({ length: 16 }).map((_, i) => {
-              const angle = (i / 16) * 2 * Math.PI;
-              const radius = 0.005;
-              return [parseFloat(lon) + radius * Math.cos(angle), parseFloat(lat) + radius * Math.sin(angle)];
-            })
-          ]
-        };
-        dangerZonePolygon.coordinates[0].push(dangerZonePolygon.coordinates[0][0]);
-        textAnalysisResult.dangerZoneGeoJSON = dangerZonePolygon;
-    }
+    // 👇 PERUBAHAN UTAMA: Backend membuat zona bahaya sendiri secara konsisten 👇
+    const dangerZonePolygon = {
+      type: "Polygon",
+      coordinates: [
+        Array.from({ length: 16 }).map((_, i) => {
+          const angle = (i / 16) * 2 * Math.PI;
+          const radius = 0.005; // Radius sekitar 500m
+          return [parseFloat(lon) + radius * Math.cos(angle), parseFloat(lat) + radius * Math.sin(angle)];
+        })
+      ]
+    };
+    dangerZonePolygon.coordinates[0].push(dangerZonePolygon.coordinates[0][0]); // Menutup poligon
+
+    // Gabungkan hasil analisis teks dari AI dengan GeoJSON buatan backend
+    const finalResult = {
+      ...textAnalysisResult,
+      dangerZoneGeoJSON: dangerZonePolygon
+    };
     
-    res.status(200).json(textAnalysisResult);
+    res.status(200).json(finalResult);
 
   } catch (error) {
     console.error("Error di getAnalysis:", error);
@@ -121,7 +119,7 @@ const getFollowUp = async (req, res) => {
     console.log("Mengirim permintaan follow-up ke AI...");
     const output = await replicate.run(
       "ibm-granite/granite-3.3-8b-instruct",
-      { input: { prompt: promptForAI, temperature: 0.6, max_new_tokens: 2048 } }
+      { input: { prompt: promptForAI, temperature: 0.6, max_new_tokens: 500 } }
     );
     const resultText = output.join("");
     res.status(200).json({ answer: resultText });
