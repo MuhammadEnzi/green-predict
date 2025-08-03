@@ -41,6 +41,7 @@ const getAnalysis = async (req, res) => {
         "communityMitigation": ["...", "..."],
         "msmeStrategy": ["...", "..."]
       }
+      Hasilkan respons HANYA dalam format JSON yang valid berdasarkan DATA INPUT dan TUGAS di atas. Jangan sertakan teks pembuka, penutup, atau penjelasan apapun di luar objek JSON.
     `;
 
     console.log("Langkah 1: Mengirim permintaan analisis teks ke AI...");
