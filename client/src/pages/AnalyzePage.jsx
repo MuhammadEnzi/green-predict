@@ -7,7 +7,7 @@ import ChatMessage from '../components/ChatMessage';
 import MapSelector from '../components/MapSelector';
 import AnalysisHighlights from '../components/AnalysisHighlights';
 
-const API_BASE_URL = 'http://localhost:5001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const AnalyzePage = () => {
   const [location, setLocation] = useState(null);

@@ -8,7 +8,7 @@ import L from 'leaflet';
 const hospitalIcon = new L.Icon({ iconUrl: 'https://img.icons8.com/office/40/hospital-3.png', iconSize: [32, 32] });
 const shelterIcon = new L.Icon({ iconUrl: 'https://img.icons8.com/plasticine/100/camping-tent.png', iconSize: [32, 32] });
 
-const API_BASE_URL = 'http://localhost:5001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const EvacuationPage = () => {
   const location = useLocation();
