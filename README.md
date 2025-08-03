@@ -1,12 +1,12 @@
 🌿 GreenPredict: Asisten Mitigasi Iklim Berbasis AI
 
 
-Deskripsi
+--------------------------------- Deskripsi ---------------------------
 Memprediksi Masa Depan, Melindungi Hari Ini.
 
 GreenPredict adalah platform analisis risiko iklim canggih yang dirancang sebagai capstone project. Aplikasi ini menjembatani kesenjangan antara data iklim yang kompleks dengan aksi mitigasi yang nyata di tingkat komunitas. Visi kami adalah memberdayakan setiap individu, UMKM, dan pengurus komunitas dengan wawasan berbasis data dan AI untuk membangun ketahanan terhadap bencana iklim seperti banjir, kekeringan, dan cuaca ekstrem. Proyek ini bukan hanya tentang memprediksi risiko, tetapi tentang menginspirasi aksi, memfasilitasi persiapan, dan menyediakan panduan saat krisis terjadi.
 
-Fitur Unggulan
+------------------------------- Fitur Unggulan -------------------------------
 Proyek ini dirancang sebagai sistem manajemen bencana yang komprehensif, menggabungkan beberapa fitur inovatif:
 
 Analisis Risiko Cerdas: Pengguna memilih lokasi di peta interaktif untuk mendapatkan analisis mendalam tentang risiko iklim menggunakan data cuaca real-time.
@@ -21,7 +21,8 @@ Perencana Rute Evakuasi Cerdas: Fitur paling inovatif di mana AI tidak hanya men
 
 Unduh Laporan PDF: Pengguna dapat mengunduh hasil analisis lengkap dalam format PDF yang rapi, memudahkan untuk berbagi dan perencanaan aksi.
 
-Teknologi yang Digunakan
+----------------------------------------- Teknologi yang Digunakan -------------------------------
+
 Berikut adalah rincian tumpukan teknologi (tech stack) yang digunakan dalam proyek ini:
 
 Frontend:
@@ -48,7 +49,7 @@ Perutean: OpenRouteService API
 
 Data Geospasial: Overpass API & Nominatim API (dari OpenStreetMap)
 
-Penjelasan Dukungan AI
+---------------------------------- Penjelasan Dukungan AI ----------------------------------
 Kecerdasan buatan (AI) adalah inti dari GreenPredict, digunakan tidak hanya sebagai penjawab, tetapi sebagai mesin analisis dan sintesis yang canggih. Kami menggunakan model IBM Granite yang diakses melalui Replicate API.
 
 Peran AI dalam proyek ini mencakup:
@@ -63,7 +64,7 @@ Pemahaman Konteks Percakapan: Untuk fitur "Bagaimana Jika?", AI mampu memahami r
 
 Pendekatan ini menunjukkan arsitektur Retrieval-Augmented Generation (RAG) sederhana, di mana kami memperkaya prompt dengan data real-time untuk mendapatkan hasil yang jauh lebih akurat dan relevan daripada sekadar bertanya langsung ke model.
 
-Panduan Instalasi & Menjalankan Proyek
+------------------------------- Panduan Instalasi & Menjalankan Proyek ------------------------------
 Untuk menjalankan proyek ini di lingkungan lokal, ikuti langkah-langkah di bawah ini.
 
 Prasyarat
