@@ -16,61 +16,82 @@ const getAnalysis = async (req, res) => {
     const totalPrecipitation = dailyPrecipitation.reduce((a, b) => a + b, 0);
     const averagePrecipitation = (totalPrecipitation / dailyPrecipitation.length).toFixed(2);
 
-    // 👇 PERUBAHAN UTAMA: Prompt dirombak untuk analisis dinamis 👇
-    const promptForAI = `
-      Anda adalah "GreenPredict", seorang ahli mitigasi bencana. Tugas Anda adalah memberikan analisis risiko iklim yang detail DAN meringkasnya menjadi poin-poin kunci. Jawab dalam Bahasa Indonesia.
+    // --- LANGKAH 1: Analisis Teks (Panggilan API Pertama) ---
+    const promptForTextAnalysis = `
+      Anda adalah "GreenPredict", seorang ahli mitigasi bencana. Berdasarkan data input, berikan analisis risiko iklim dan ringkasannya. Jawab dalam Bahasa Indonesia.
 
       ### DATA INPUT ###
       **Lokasi:** ${locationName}
-      **Jenis Risiko untuk Dianalisis:** "${riskType}"
-      **Data Curah Hujan (90 hari terakhir):** Rata-rata ${averagePrecipitation} mm/hari.
+      **Jenis Risiko:** "${riskType}"
+      **Data Curah Hujan:** Rata-rata ${averagePrecipitation} mm/hari.
 
       ### TUGAS ANDA ###
-      1.  **Tentukan Tingkat Risiko**: Berdasarkan data curah hujan, berikan satu kata kesimpulan: "Rendah", "Sedang", atau "Tinggi". (Contoh: jika curah hujan > 5mm/hari untuk banjir, risikonya 'Tinggi'. Jika < 1mm/hari untuk kekeringan, risikonya 'Tinggi').
-      2.  **Identifikasi Fakta Kunci**: Pilih satu data paling penting yang mendukung kesimpulan Anda.
-      3.  **Pilih Rekomendasi Utama**: Pilih satu aksi mitigasi yang paling berdampak.
-      4.  Buat analisis risiko, strategi komunitas, dan strategi UMKM yang detail.
-      5.  Buat poligon GeoJSON sederhana untuk zona bahaya.
+      1.  Tentukan Tingkat Risiko ("Rendah", "Sedang", "Tinggi").
+      2.  Identifikasi Fakta Kunci.
+      3.  Pilih Rekomendasi Utama.
+      4.  Buat analisis risiko, strategi komunitas, dan strategi UMKM.
 
-      ### FORMAT OUTPUT (IKUTI DENGAN SANGAT TEPAT) ###
-      Hasilkan respons HANYA dalam format JSON yang valid. Jangan sertakan teks lain. Strukturnya harus seperti ini (perhatikan 'riskLevel' harus Anda tentukan sendiri):
+      ### FORMAT OUTPUT (HANYA JSON TEKS) ###
+      Hasilkan respons HANYA dalam format JSON yang valid. Jangan sertakan GeoJSON.
       {
         "riskLevel": "...", 
         "keyFact": "...",
         "keyRecommendation": "...",
         "riskAnalysis": "...",
         "communityMitigation": ["...", "..."],
-        "msmeStrategy": ["...", "..."],
-        "dangerZoneGeoJSON": {
-          "type": "Polygon",
-          "coordinates": [[[...]]]
-        }
+        "msmeStrategy": ["...", "..."]
       }
     `;
 
-    console.log("Mengirim permintaan analisis dengan prompt dinamis...");
-    const output = await replicate.run(
+    console.log("Langkah 1: Mengirim permintaan analisis teks ke AI...");
+    const textOutput = await replicate.run(
       "ibm-granite/granite-3.3-8b-instruct",
-      { 
-        input: { 
-          prompt: promptForAI, 
-          temperature: 0.7, 
-          max_new_tokens: 4096 
-        } 
-      }
+      { input: { prompt: promptForTextAnalysis, temperature: 0.7, max_new_tokens: 2048 } }
     );
 
-    const resultString = output.join("");
-    console.log("--- RESPONS MENTAH DARI AI ---", resultString);
+    let textResultString = textOutput.join("");
+    let startIndex = textResultString.indexOf('{');
+    let endIndex = textResultString.lastIndexOf('}');
+    if (startIndex === -1 || endIndex === -1) throw new Error("Respons teks dari AI tidak valid.");
+    let textJsonString = textResultString.substring(startIndex, endIndex + 1);
+    const textAnalysisResult = JSON.parse(textJsonString);
+
+    // --- LANGKAH 2: Generasi GeoJSON (Panggilan API Kedua) ---
+    const promptForGeoJSON = `
+      Anda adalah seorang analis GIS. Berdasarkan analisis risiko berikut, buatkan sebuah poligon GeoJSON sederhana (5-10 titik) untuk zona bahaya utama.
+
+      ### KONTEKS ANALISIS ###
+      **Lokasi:** ${locationName}
+      **Jenis Risiko:** ${riskType}
+      **Analisis:** ${textAnalysisResult.riskAnalysis}
+
+      ### TUGAS ANDA ###
+      Buat HANYA objek GeoJSON untuk "dangerZoneGeoJSON". Pastikan titik pertama dan terakhir sama.
+
+      ### CONTOH OUTPUT ###
+      { "type": "Polygon", "coordinates": [[[106.82, -6.20], [106.83, -6.21], [106.82, -6.22], [106.81, -6.21], [106.82, -6.20]]] }
+    `;
+
+    console.log("Langkah 2: Mengirim permintaan GeoJSON ke AI...");
+    const geoJsonOutput = await replicate.run(
+      "ibm-granite/granite-3.3-8b-instruct",
+      { input: { prompt: promptForGeoJSON, temperature: 0.5, max_new_tokens: 2048 } }
+    );
     
-    const startIndex = resultString.indexOf('{');
-    const endIndex = resultString.lastIndexOf('}');
-    if (startIndex === -1 || endIndex === -1) throw new Error("Respons AI tidak valid.");
+    let geoJsonResultString = geoJsonOutput.join("");
+    startIndex = geoJsonResultString.indexOf('{');
+    endIndex = geoJsonResultString.lastIndexOf('}');
+    if (startIndex === -1 || endIndex === -1) throw new Error("Respons GeoJSON dari AI tidak valid.");
+    let geoJsonString = geoJsonResultString.substring(startIndex, endIndex + 1);
+    const dangerZoneResult = JSON.parse(geoJsonString);
+
+    // --- LANGKAH 3: Gabungkan Hasil & Kirim ke Frontend ---
+    const finalResult = {
+      ...textAnalysisResult,
+      dangerZoneGeoJSON: dangerZoneResult
+    };
     
-    const jsonString = resultString.substring(startIndex, endIndex + 1);
-    const parsedResult = JSON.parse(jsonString);
-    
-    res.status(200).json(parsedResult);
+    res.status(200).json(finalResult);
 
   } catch (error) {
     console.error("Error di getAnalysis:", error);
@@ -102,7 +123,7 @@ const getFollowUp = async (req, res) => {
     ### JAWABAN ANDA ###
   `;
   try {
-    console.log("Mengirim permintaan follow-up ke Replicate API...");
+    console.log("Mengirim permintaan follow-up ke AI...");
     const output = await replicate.run(
       "ibm-granite/granite-3.3-8b-instruct",
       { input: { prompt: promptForAI, temperature: 0.6, max_new_tokens: 500 } }
