@@ -50,7 +50,7 @@ const getAnalysis = async (req, res) => {
         input: { 
           prompt: promptForAI, 
           temperature: 0.7, 
-          max_new_tokens: 2048 // Bisa diturunkan karena tugas lebih ringan
+          max_new_tokens: 4096 // Bisa diturunkan karena tugas lebih ringan
         } 
       }
     );
@@ -119,7 +119,7 @@ const getFollowUp = async (req, res) => {
     console.log("Mengirim permintaan follow-up ke AI...");
     const output = await replicate.run(
       "ibm-granite/granite-3.3-8b-instruct",
-      { input: { prompt: promptForAI, temperature: 0.6, max_new_tokens: 500 } }
+      { input: { prompt: promptForAI, temperature: 0.6, max_new_tokens: 2048 } }
     );
     const resultText = output.join("");
     res.status(200).json({ answer: resultText });
