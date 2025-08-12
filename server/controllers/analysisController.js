@@ -50,7 +50,7 @@ const getAnalysis = async (req, res) => {
 
     console.log("Mengirim permintaan analisis dengan prompt dinamis...");
     const output = await replicate.run(
-      "ibm-granite/granite-3.3-8b-instruct:624457588a734565a5131f496d6e752932972986a5124116b8e138a08eda44f4",
+      "ibm-granite/granite-3.3-8b-instruct",
       { 
         input: { 
           prompt: promptForAI, 
@@ -104,7 +104,7 @@ const getFollowUp = async (req, res) => {
   try {
     console.log("Mengirim permintaan follow-up ke AI...");
     const output = await replicate.run(
-      "ibm-granite/granite-3.3-8b-instruct:624457588a734565a5131f496d6e752932972986a5124116b8e138a08eda44f4",
+      "ibm-granite/granite-3.3-8b-instruct",
       { input: { prompt: promptForAI, temperature: 0.6, max_new_tokens: 500 } }
     );
     const resultText = output.join("");
