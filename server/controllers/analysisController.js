@@ -16,9 +16,9 @@ const getAnalysis = async (req, res) => {
     const totalPrecipitation = dailyPrecipitation.reduce((a, b) => a + b, 0);
     const averagePrecipitation = (totalPrecipitation / dailyPrecipitation.length).toFixed(2);
 
-    // 👇 PERUBAHAN UTAMA: Prompt dirombak untuk analisis dinamis 👇
+    // 👇 PROMPT YANG JAUH LEBIH SEDERHANA DAN FOKUS PADA TEKS 👇
     const promptForAI = `
-      Anda adalah "GreenPredict", seorang ahli mitigasi bencana. Tugas Anda adalah memberikan analisis risiko iklim yang detail DAN meringkasnya menjadi poin-poin kunci. Jawab dalam Bahasa Indonesia.
+      Anda adalah "GreenPredict", seorang ahli mitigasi bencana. Tugas Anda adalah memberikan analisis risiko iklim yang detail DAN meringkasnya menjadi poin-poin kunci berdasarkan data input. Jawab dalam Bahasa Indonesia.
 
       ### DATA INPUT ###
       **Lokasi:** ${locationName}
@@ -26,36 +26,31 @@ const getAnalysis = async (req, res) => {
       **Data Curah Hujan (90 hari terakhir):** Rata-rata ${averagePrecipitation} mm/hari.
 
       ### TUGAS ANDA ###
-      1.  **Tentukan Tingkat Risiko**: Berdasarkan data curah hujan, berikan satu kata kesimpulan: "Rendah", "Sedang", atau "Tinggi". (Contoh: jika curah hujan > 5mm/hari untuk banjir, risikonya 'Tinggi'. Jika < 1mm/hari untuk kekeringan, risikonya 'Tinggi').
+      1.  **Tentukan Tingkat Risiko**: Berdasarkan data curah hujan, berikan satu kata kesimpulan: "Rendah", "Sedang", atau "Tinggi". GUNAKAN ATURAN LOGIKA INI: Untuk Banjir, > 5mm/hari = Tinggi, 2-5mm/hari = Sedang, < 2mm/hari = Rendah. Untuk Kekeringan, < 1mm/hari = Tinggi, 1-3mm/hari = Sedang, > 3mm/hari = Rendah.
       2.  **Identifikasi Fakta Kunci**: Pilih satu data paling penting yang mendukung kesimpulan Anda.
       3.  **Pilih Rekomendasi Utama**: Pilih satu aksi mitigasi yang paling berdampak.
       4.  Buat analisis risiko, strategi komunitas, dan strategi UMKM yang detail.
-      5.  Buat poligon GeoJSON sederhana untuk zona bahaya.
 
       ### FORMAT OUTPUT (IKUTI DENGAN SANGAT TEPAT) ###
-      Hasilkan respons HANYA dalam format JSON yang valid. Jangan sertakan teks lain. Strukturnya harus seperti ini (perhatikan 'riskLevel' harus Anda tentukan sendiri):
+      Hasilkan respons HANYA dalam format JSON yang valid. JANGAN sertakan GeoJSON atau teks lain di luar objek JSON.
       {
         "riskLevel": "...", 
         "keyFact": "...",
         "keyRecommendation": "...",
         "riskAnalysis": "...",
         "communityMitigation": ["...", "..."],
-        "msmeStrategy": ["...", "..."],
-        "dangerZoneGeoJSON": {
-          "type": "Polygon",
-          "coordinates": [[[...]]]
-        }
+        "msmeStrategy": ["...", "..."]
       }
     `;
 
-    console.log("Mengirim permintaan analisis dengan prompt dinamis...");
+    console.log("Mengirim permintaan analisis teks ke AI...");
     const output = await replicate.run(
       "ibm-granite/granite-3.3-8b-instruct",
       { 
         input: { 
           prompt: promptForAI, 
           temperature: 0.7, 
-          max_new_tokens: 4096 
+          max_new_tokens: 2048 // Bisa diturunkan karena tugas lebih ringan
         } 
       }
     );
@@ -68,9 +63,28 @@ const getAnalysis = async (req, res) => {
     if (startIndex === -1 || endIndex === -1) throw new Error("Respons AI tidak valid.");
     
     const jsonString = resultString.substring(startIndex, endIndex + 1);
-    const parsedResult = JSON.parse(jsonString);
+    const textAnalysisResult = JSON.parse(jsonString);
+
+    // 👇 PERUBAHAN UTAMA: Backend membuat zona bahaya sendiri secara konsisten 👇
+    const dangerZonePolygon = {
+      type: "Polygon",
+      coordinates: [
+        Array.from({ length: 16 }).map((_, i) => {
+          const angle = (i / 16) * 2 * Math.PI;
+          const radius = 0.005; // Radius sekitar 500m
+          return [parseFloat(lon) + radius * Math.cos(angle), parseFloat(lat) + radius * Math.sin(angle)];
+        })
+      ]
+    };
+    dangerZonePolygon.coordinates[0].push(dangerZonePolygon.coordinates[0][0]); // Menutup poligon
+
+    // Gabungkan hasil analisis teks dari AI dengan GeoJSON buatan backend
+    const finalResult = {
+      ...textAnalysisResult,
+      dangerZoneGeoJSON: dangerZonePolygon
+    };
     
-    res.status(200).json(parsedResult);
+    res.status(200).json(finalResult);
 
   } catch (error) {
     console.error("Error di getAnalysis:", error);
